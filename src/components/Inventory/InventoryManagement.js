@@ -226,7 +226,7 @@ function InventoryManagement() {
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 7, mb: 3 }}>
-        <Typography level="h3">Inventory Management</Typography>
+        <Typography level="h3">Inventory Manager</Typography>
         <Button 
           variant="solid" 
           color="primary" 

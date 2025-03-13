@@ -40,8 +40,8 @@ const theme = extendTheme({
           900: '#d0dfe6',
         },
         background: {
-          body: '#121212',
-          surface: '#1e1e1e',
+          body: '#0b0d0e',
+          surface: '#1118240D',
           level1: '#2a2a2a',
           level2: '#333333',
           level3: '#3d3d3d',

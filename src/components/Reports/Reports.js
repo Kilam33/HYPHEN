@@ -141,7 +141,7 @@ const mockReportData = {
 };
 
 function Reports() {
-  const [data, setData] = useState(null);
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
   const [dateRange, setDateRange] = useState('last30days');
@@ -1116,7 +1116,7 @@ function Reports() {
                       </Box>
                       <Box>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                          <Typography level="body-xs">Needs Improvement (80%)</Typography>
+                          <Typography level="body-xs">Needs Improvement (below 80%)</Typography>
                           <Typography level="body-xs">6</Typography>
                         </Box>
                         <LinearProgress determinate value={25} color="warning" sx={{ height: 6, borderRadius: 3 }} />
@@ -1128,7 +1128,7 @@ function Reports() {
                   <Typography level="title-md" sx={{ mb: 2 }}>Report Generation</Typography>
                   <FormControl size="sm" sx={{ mb: 2 }}>
                     <FormLabel>Report Type</FormLabel>
-                    <Select defaultValue="supplierPerformance">
+                    <Select defaultValue={["supplierPerformance"]}>
                       <Option value="supplierPerformance">Supplier Performance</Option>
                       <Option value="supplierComparison">Supplier Comparison</Option>
                       <Option value="onTimeDelivery">On-Time Delivery Analysis</Option>
@@ -1141,7 +1141,7 @@ function Reports() {
                   </FormControl>
                   <FormControl size="sm" sx={{ mb: 2 }}>
                     <FormLabel>Select Suppliers</FormLabel>
-                    <Select defaultValue="all" multiple>
+                    <Select defaultValue={["all"]} multiple>
                       <Option value="all">All Suppliers</Option>
                       {data.supplierPerformance.topSuppliers.map((supplier, index) => (
                         <Option key={index} value={supplier.id}>{supplier.name}</Option>
