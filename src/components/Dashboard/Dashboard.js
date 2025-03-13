@@ -159,7 +159,7 @@ function Dashboard() {
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt:7, mb: 3 }}>
-        <Typography level="h3">Dashboard</Typography>
+        <Typography level="h3">Overview</Typography>
         <Button 
           variant="soft" 
           color="primary" 

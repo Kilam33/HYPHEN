@@ -34,7 +34,7 @@ function Layout({ children }) {
             sx={{
               position: 'fixed',
               top: { xs: '14px', sm: '20px' },
-              right: '20px',
+              right: '60px',
               zIndex: 1100,
             }}
           >
