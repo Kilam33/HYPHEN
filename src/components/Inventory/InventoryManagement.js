@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, TabList, Card, Grid, Button, Input, IconButton, Chip, Table, Divider, Tabs, Tab, Sheet, Select, Option, Modal, ModalDialog, ModalClose, FormControl, FormLabel, Textarea, Switch, Badge, CircularProgress, Stack, Alert } from '@mui/joy';
+import { Box, Checkbox, Typography, TabList, Card, Grid, Button, Input, IconButton, Chip, Table, Divider, Tabs, Tab, Sheet, Select, Option, Modal, ModalDialog, ModalClose, FormControl, FormLabel, Textarea, Switch, Badge, CircularProgress, Stack, Alert } from '@mui/joy';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -15,6 +15,7 @@ import InventoryIcon from '@mui/icons-material/Inventory';
 import CategoryIcon from '@mui/icons-material/Category';
 import UploadIcon from '@mui/icons-material/Upload';
 import CategoryManagementModal from './CategoryManagementModal';
+
 
 // Get the API URL from environment variables or use a default
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -34,11 +35,25 @@ function InventoryManagement() {
   const [itemToDelete, setItemToDelete] = useState(null);
   const [saveLoading, setSaveLoading] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(20);
+  const [selectedItems, setSelectedItems] = useState([]);
+  
 
   // Fetch all necessary data when component mounts
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Reset selections when page changes
+  useEffect(() => {
+    setSelectedItems([]);
+  }, [currentPage]);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterCategory]);
 
   // Main data fetching function
   const fetchData = async () => {
@@ -78,9 +93,9 @@ function InventoryManagement() {
       setLoading(false);
     }
   };
-  
 
- 
+
+  
 
   // Fetch inventory data
   const fetchInventory = async () => {
@@ -130,7 +145,7 @@ function InventoryManagement() {
   // Filter inventory items based on search query and category filter
   const filteredItems = React.useMemo(() => {
     if (!Array.isArray(inventory)) return [];
-    
+
     return inventory.filter(item => {
       const matchesSearch =
         (item?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -138,10 +153,15 @@ function InventoryManagement() {
       const matchesCategory =
         filterCategory === 'all' ||
         item?.category === filterCategory;
-  
+
       return matchesSearch && matchesCategory;
     });
   }, [inventory, searchQuery, filterCategory]);
+
+  // Get current items for pagination
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredItems.slice(indexOfFirstItem, indexOfLastItem);
 
   // Handle category changes
   const handleCategoryChange = async () => {
@@ -154,6 +174,28 @@ function InventoryManagement() {
       setError('Failed to refresh categories');
     }
   };
+
+  // Handle individual item selection
+const handleSelectItem = (itemId) => {
+  setSelectedItems(prev => {
+    if (prev.includes(itemId)) {
+      return prev.filter(id => id !== itemId);
+    } else {
+      return [...prev, itemId];
+    }
+  });
+};
+
+// Handle select all functionality
+const handleSelectAll = () => {
+  if (selectedItems.length === currentItems.length) {
+    // If all are selected, unselect all
+    setSelectedItems([]);
+  } else {
+    // Otherwise select all current items
+    setSelectedItems(currentItems.map(item => item.id));
+  }
+};
 
   // Format date function
   const formatDate = (dateString) => {
@@ -453,6 +495,7 @@ function InventoryManagement() {
           <Tab>Categories</Tab>
         </TabList>
       </Tabs>
+      
 
       {/* Search and filter bar */}
       <Card variant="outlined" sx={{ mb: 3, p: 2 }}>
@@ -486,19 +529,17 @@ function InventoryManagement() {
               startDecorator={<RefreshIcon />}
               size="sm"
               onClick={async () => {
-                setLoading(true); // Set loading state to true
+                setLoading(true);
                 try {
-                  // Fetch all data in parallel (recommended for efficiency)
-                  await Promise.all([
-                    fetchInventory(),    // Fetch inventory
-                    fetchCategories(),   // Fetch categories
-                    fetchSuppliers(),    // Fetch suppliers
-                    // Add other fetch functions here if needed
-                  ]);
+                  await fetchData(); // Use your existing fetchData function
+                  setSearchQuery(''); // Reset search query
+                  setFilterCategory('all'); // Reset category filter
+                  setCurrentPage(1); // Reset to first page
                 } catch (error) {
                   console.error("Failed to refresh data:", error);
+                  setError("Failed to refresh data: " + error.message);
                 } finally {
-                  setLoading(false); // Set loading state to false
+                  setLoading(false);
                 }
               }}
               disabled={loading} // Disable button while loading
@@ -525,13 +566,49 @@ function InventoryManagement() {
           </Grid>
         </Grid>
       </Card>
-
+      {/* Add this before your table */}
+      {selectedItems.length > 0 && (
+        <Box sx={{ mb: 2, display: 'flex', gap: 1 }}>
+          <Typography sx={{ display: 'flex', alignItems: 'center' }}>
+            {selectedItems.length} item(s) selected
+          </Typography>
+          <Button
+            size="sm"
+            color="primary"
+            variant="soft"
+            startDecorator={<EditIcon />}
+          >
+            Bulk Edit
+          </Button>
+          <Button
+            size="sm"
+            color="danger"
+            variant="soft"
+            startDecorator={<DeleteIcon />}
+            onClick={() => {
+              // Add confirm dialog or logic for bulk delete
+              console.log("Bulk delete:", selectedItems);
+            }}
+          >
+            Delete Selected
+          </Button>
+        </Box>
+      )}
       {/* Content based on active tab */}
       {activeTab === 0 && (
         <Card variant="outlined">
           <Table stickyHeader hoverRow>
             <thead>
               <tr>
+                <th style={{ width: '5%' }}>
+                  <Checkbox
+                    checked={currentItems.length > 0 && selectedItems.length === currentItems.length}
+                    indeterminate={selectedItems.length > 0 && selectedItems.length < currentItems.length}
+                    onChange={handleSelectAll}
+                  />
+                </th>
+                <th style={{ width: '20%' }}>Name</th>
+                <th style={{ width: '10%' }}>SKU</th>
                 <th style={{ width: '20%' }}>Name</th>
                 <th style={{ width: '10%' }}>SKU</th>
                 <th style={{ width: '10%' }}>Category</th>
@@ -543,23 +620,32 @@ function InventoryManagement() {
               </tr>
             </thead>
             <tbody>
-              {filteredItems.length === 0 ? (
+              {currentItems.length === 0 ? (
                 <tr>
                   <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                       <InventoryIcon sx={{ fontSize: 40, opacity: 0.3 }} />
                       <Typography level="body-lg">No inventory items found</Typography>
                       <Typography level="body-sm" sx={{ opacity: 0.7 }}>
-                        {searchQuery || filterCategory !== 'all' 
-                          ? "Try adjusting your search filters" 
+                        {searchQuery || filterCategory !== 'all'
+                          ? "Try adjusting your search filters"
                           : "Add your first inventory item to get started"}
                       </Typography>
                     </Box>
                   </td>
                 </tr>
               ) : (
-                filteredItems.map((item) => (
+                currentItems.map((item) => (
                   <tr key={item.id}>
+                    <td>
+                      <Checkbox
+                        checked={selectedItems.includes(item.id)}
+                        onChange={() => handleSelectItem(item.id)}
+                      />
+                    </td>
+                    <td>
+                      <Typography fontWeight="lg">{item.name}</Typography>
+                    </td>
                     <td>
                       <Typography fontWeight="lg">{item.name}</Typography>
                     </td>
@@ -845,7 +931,7 @@ function InventoryManagement() {
                 </FormControl>
               </Grid>
             </Grid>
-            
+
             <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
               <Button variant="outlined" color="neutral" onClick={handleCloseModal}>
                 Cancel
@@ -857,6 +943,101 @@ function InventoryManagement() {
           </form>
         </ModalDialog>
       </Modal>
+      <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+        {/* First page button */}
+        <Button
+          variant="outlined"
+          color="neutral"
+          onClick={() => setCurrentPage(1)}
+          disabled={currentPage === 1}
+          size="sm"
+        >
+          First
+        </Button>
+
+        {/* Skip 10 pages backward */}
+        <Button
+          variant="outlined"
+          color="neutral"
+          onClick={() => setCurrentPage(prev => Math.max(prev - 10, 1))}
+          disabled={currentPage <= 10}
+          size="sm"
+        >
+          -10
+        </Button>
+
+        {/* Previous page button */}
+        <Button
+          variant="outlined"
+          color="neutral"
+          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+          disabled={currentPage === 1}
+        >
+          Previous
+        </Button>
+
+        <Typography sx={{ display: 'flex', alignItems: 'center', mx: 2 }}>
+          Page {currentPage} of {Math.ceil(filteredItems.length / itemsPerPage)}
+        </Typography>
+
+        {/* Next page button */}
+        <Button
+          variant="outlined"
+          color="neutral"
+          onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredItems.length / itemsPerPage)))}
+          disabled={currentPage >= Math.ceil(filteredItems.length / itemsPerPage)}
+        >
+          Next
+        </Button>
+
+        {/* Skip 10 pages forward */}
+        <Button
+          variant="outlined"
+          color="neutral"
+          onClick={() => setCurrentPage(prev => Math.min(prev + 10, Math.ceil(filteredItems.length / itemsPerPage)))}
+          disabled={currentPage >= Math.ceil(filteredItems.length / itemsPerPage) - 9}
+          size="sm"
+        >
+          +10
+        </Button>
+
+        {/* Last page button */}
+        <Button
+          variant="outlined"
+          color="neutral"
+          onClick={() => setCurrentPage(Math.ceil(filteredItems.length / itemsPerPage))}
+          disabled={currentPage === Math.ceil(filteredItems.length / itemsPerPage)}
+          size="sm"
+        >
+          Last
+        </Button>
+
+        {/* input field to let users jump to a specific page */}
+        <Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
+          <Typography sx={{ mr: 1 }}>Go to:</Typography>
+          <Input
+            size="sm"
+            sx={{ width: '60px' }}
+            type="number"
+            slotProps={{
+              input: {
+                min: 1,
+                max: Math.ceil(filteredItems.length / itemsPerPage)
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                const value = parseInt(e.target.value);
+                if (!isNaN(value) && value >= 1 && value <= Math.ceil(filteredItems.length / itemsPerPage)) {
+                  setCurrentPage(value);
+                }
+              }
+            }}
+          />
+        </Box>
+
+      </Box>
+
 
       {/* Delete Confirmation Modal */}
       <Modal open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
@@ -864,7 +1045,7 @@ function InventoryManagement() {
           <Typography level="h4">Confirm Delete</Typography>
           <Divider sx={{ my: 2 }} />
           <Typography mb={2}>
-            Are you sure you want to delete the item "{itemToDelete?.name}"? 
+            Are you sure you want to delete the item "{itemToDelete?.name}"?
             This action cannot be undone.
           </Typography>
           <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
@@ -885,8 +1066,12 @@ function InventoryManagement() {
         categories={categories}
         onCategoryChange={handleCategoryChange}
         apiUrl={API_URL}
+
+        
       />
     </Box>
+    
+    
   );
 }
 
