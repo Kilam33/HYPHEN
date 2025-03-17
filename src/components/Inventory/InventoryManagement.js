@@ -7,8 +7,10 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import WarningIcon from '@mui/icons-material/Warning';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp'; 
 import QrCodeIcon from '@mui/icons-material/QrCode';
 import HistoryIcon from '@mui/icons-material/History';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import CategoryIcon from '@mui/icons-material/Category';
 import UploadIcon from '@mui/icons-material/Upload';
@@ -44,15 +46,31 @@ function InventoryManagement() {
     setError(null);
 
     try {
-      // Initialize database if needed
-      await initializeDatabase();
+      // Initialize database first
+      await fetch(`${API_URL}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
 
-      // Fetch all data in parallel
-      await Promise.all([
+      // Then fetch all data in parallel
+      const [inventoryData, categoriesData, suppliersData] = await Promise.all([
         fetchInventory(),
         fetchCategories(),
         fetchSuppliers()
       ]);
+
+      // Ensure we have valid data before setting state
+      if (Array.isArray(inventoryData)) {
+        setInventory(inventoryData);
+      }
+      if (Array.isArray(categoriesData)) {
+        setCategories(categoriesData);
+      }
+      if (Array.isArray(suppliersData)) {
+        setSuppliers(suppliersData);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
       setError(error.message || 'Failed to load data');
@@ -60,41 +78,19 @@ function InventoryManagement() {
       setLoading(false);
     }
   };
+  
 
-  // Initialize database
-  const initializeDatabase = async () => {
-    try {
-      const response = await fetch(`${API_URL}/setup`, { 
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to initialize database');
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.warn('Database setup warning:', error);
-      // Continue even if setup fails - might be already set up
-    }
-  };
+ 
 
   // Fetch inventory data
   const fetchInventory = async () => {
     try {
-      const response = await fetch(`${API_URL}/inventory`);
-      
+      const response = await fetch(`${API_URL}/inventory_items`);
       if (!response.ok) {
-        throw new Error('Failed to fetch inventory data');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch inventory data');
       }
-      
-      const data = await response.json();
-      setInventory(data);
-      return data;
+      return await response.json();
     } catch (error) {
       console.error('Inventory fetch error:', error);
       throw error;
@@ -105,14 +101,11 @@ function InventoryManagement() {
   const fetchCategories = async () => {
     try {
       const response = await fetch(`${API_URL}/categories`);
-      
       if (!response.ok) {
-        throw new Error('Failed to fetch categories data');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch categories data');
       }
-      
-      const data = await response.json();
-      setCategories(data);
-      return data;
+      return await response.json();
     } catch (error) {
       console.error('Categories fetch error:', error);
       throw error;
@@ -123,14 +116,11 @@ function InventoryManagement() {
   const fetchSuppliers = async () => {
     try {
       const response = await fetch(`${API_URL}/suppliers`);
-      
       if (!response.ok) {
-        throw new Error('Failed to fetch suppliers data');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch suppliers data');
       }
-      
-      const data = await response.json();
-      setSuppliers(data);
-      return data;
+      return await response.json();
     } catch (error) {
       console.error('Suppliers fetch error:', error);
       throw error;
@@ -138,16 +128,20 @@ function InventoryManagement() {
   };
 
   // Filter inventory items based on search query and category filter
-  const filteredItems = inventory.filter(item => {
-    const matchesSearch =
-      (item.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.sku?.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesCategory =
-      filterCategory === 'all' ||
-      item.category === filterCategory;
-
-    return matchesSearch && matchesCategory;
-  });
+  const filteredItems = React.useMemo(() => {
+    if (!Array.isArray(inventory)) return [];
+    
+    return inventory.filter(item => {
+      const matchesSearch =
+        (item?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item?.sku?.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesCategory =
+        filterCategory === 'all' ||
+        item?.category === filterCategory;
+  
+      return matchesSearch && matchesCategory;
+    });
+  }, [inventory, searchQuery, filterCategory]);
 
   // Handle category changes
   const handleCategoryChange = async () => {
@@ -196,7 +190,7 @@ function InventoryManagement() {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/inventory/${itemToDelete.id}`, {
+      const response = await fetch(`${API_URL}/inventory_items/${itemToDelete.id}`, {
         method: 'DELETE',
       });
 
@@ -239,8 +233,8 @@ function InventoryManagement() {
       };
 
       const url = selectedItem
-        ? `${API_URL}/inventory/${selectedItem.id}` // Update existing item
-        : `${API_URL}/inventory`; // Add new item
+        ? `${API_URL}/inventory_items/${selectedItem.id}` // Update existing item
+        : `${API_URL}/inventory_items`; // Add new item
       const method = selectedItem ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
@@ -389,6 +383,50 @@ function InventoryManagement() {
         </Button>
       </Box>
 
+      {/* Stats cards */}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid xs={12} sm={6} lg={3}>
+          <Card variant="soft" color="light" sx={{ p: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Typography level="title-md">Total Inventory Value</Typography>
+              <InventoryIcon />
+            </Box>
+            <Typography level="h3">${inventory.reduce((acc, item) => acc + (item.in_stock * item.price), 0).toLocaleString()}</Typography>
+            <Typography level="body-sm" sx={{ mt: 1 }}>Based on current stock levels</Typography>
+          </Card>
+        </Grid>
+        <Grid xs={12} sm={6} lg={3}>
+          <Card variant="soft" color="warning" sx={{ p: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Typography level="title-md">Low Stock Items</Typography>
+              <WarningIcon />
+            </Box>
+            <Typography level="h3">{inventory.filter(item => item.available <= item.low_stock_threshold).length}</Typography>
+            <Typography level="body-sm" sx={{ mt: 1 }}>Items needing restock</Typography>
+          </Card>
+        </Grid>
+        <Grid xs={12} sm={6} lg={3}>
+          <Card variant="soft" color="success" sx={{ p: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Typography level="title-md">Forecasted Demand</Typography>
+              <TrendingUpIcon />
+            </Box>
+            <Typography level="h3">+15%</Typography>
+            <Typography level="body-sm" sx={{ mt: 1 }}>Next 30 days</Typography>
+          </Card>
+        </Grid>
+        <Grid xs={12} sm={6} lg={3}>
+          <Card variant="soft" color="danger" sx={{ p: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Typography level="title-md">Inventory Turnover</Typography>
+              <RefreshIcon />
+            </Box>
+            <Typography level="h3">2.5x</Typography>
+            <Typography level="body-sm" sx={{ mt: 1 }}>Last 12 months</Typography>
+          </Card>
+        </Grid>
+      </Grid>
+      
       {/* Display error as alert if error exists but we have some data */}
       {error && inventory.length > 0 && (
         <Alert color="warning" variant="soft" sx={{ mb: 3 }}>
@@ -442,6 +480,32 @@ function InventoryManagement() {
             </Select>
           </Grid>
           <Grid xs={12} sm={4} sx={{ display: 'flex', gap: 1, justifyContent: { xs: 'flex-start', sm: 'flex-end' } }}>
+            <Button
+              variant="soft"
+              color="primary"
+              startDecorator={<RefreshIcon />}
+              size="sm"
+              onClick={async () => {
+                setLoading(true); // Set loading state to true
+                try {
+                  // Fetch all data in parallel (recommended for efficiency)
+                  await Promise.all([
+                    fetchInventory(),    // Fetch inventory
+                    fetchCategories(),   // Fetch categories
+                    fetchSuppliers(),    // Fetch suppliers
+                    // Add other fetch functions here if needed
+                  ]);
+                } catch (error) {
+                  console.error("Failed to refresh data:", error);
+                } finally {
+                  setLoading(false); // Set loading state to false
+                }
+              }}
+              disabled={loading} // Disable button while loading
+            >
+              {loading ? 'Refreshing...' : 'Refresh'}
+            </Button>
+            
             <Button
               variant="outlined"
               colorvariant="outlined"
