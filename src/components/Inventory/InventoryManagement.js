@@ -495,7 +495,7 @@ const handleSelectAll = () => {
           <Tab>Categories</Tab>
         </TabList>
       </Tabs>
-      
+
 
       {/* Search and filter bar */}
       <Card variant="outlined" sx={{ mb: 3, p: 2 }}>
@@ -546,7 +546,7 @@ const handleSelectAll = () => {
             >
               {loading ? 'Refreshing...' : 'Refresh'}
             </Button>
-            
+
             <Button
               variant="outlined"
               colorvariant="outlined"
@@ -607,22 +607,20 @@ const handleSelectAll = () => {
                     onChange={handleSelectAll}
                   />
                 </th>
-                <th style={{ width: '20%' }}>Name</th>
-                <th style={{ width: '10%' }}>SKU</th>
-                <th style={{ width: '20%' }}>Name</th>
-                <th style={{ width: '10%' }}>SKU</th>
-                <th style={{ width: '10%' }}>Category</th>
-                <th style={{ width: '10%' }}>In Stock</th>
-                <th style={{ width: '10%' }}>Available</th>
-                <th style={{ width: '10%' }}>Supplier</th>
-                <th style={{ width: '10%' }}>Location</th>
-                <th style={{ width: '20%' }}>Actions</th>
+                <th style={{ width: '25%' }}>Name</th>
+                <th style={{ width: '20%' }}>SKU</th>
+                <th style={{ width: '20%' }}>Category</th>
+                <th style={{ width: '15%' }}>In Stock</th>
+                <th style={{ width: '15%' }}>Available</th>
+                <th style={{ width: '25%' }}>Supplier</th>
+                <th style={{ width: '20%' }}>Location</th>
+                <th style={{ width: '15%' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {currentItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '2rem' }}>
                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                       <InventoryIcon sx={{ fontSize: 40, opacity: 0.3 }} />
                       <Typography level="body-lg">No inventory items found</Typography>
@@ -642,9 +640,6 @@ const handleSelectAll = () => {
                         checked={selectedItems.includes(item.id)}
                         onChange={() => handleSelectItem(item.id)}
                       />
-                    </td>
-                    <td>
-                      <Typography fontWeight="lg">{item.name}</Typography>
                     </td>
                     <td>
                       <Typography fontWeight="lg">{item.name}</Typography>
