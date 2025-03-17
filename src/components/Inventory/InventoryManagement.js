@@ -38,7 +38,12 @@ function InventoryManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(20);
   const [selectedItems, setSelectedItems] = useState([]);
-  
+  const [openFilterModal, setOpenFilterModal] = useState(false);
+  const [stockFilter, setStockFilter] = useState('all');
+  const [locationFilter, setLocationFilter] = useState('all');
+  const [supplierFilter, setSupplierFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
+
 
   // Fetch all necessary data when component mounts
   useEffect(() => {
@@ -145,18 +150,33 @@ function InventoryManagement() {
   // Filter inventory items based on search query and category filter
   const filteredItems = React.useMemo(() => {
     if (!Array.isArray(inventory)) return [];
-
+    
     return inventory.filter(item => {
-      const matchesSearch =
+      // Existing filters
+      const matchesSearch = 
         (item?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item?.sku?.toLowerCase().includes(searchQuery.toLowerCase()));
+         item?.sku?.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchesCategory =
-        filterCategory === 'all' ||
-        item?.category === filterCategory;
+        filterCategory === 'all' || item?.category === filterCategory;
+      
+      // New filters
+      const matchesStockStatus = (() => {
+        if (stockFilter === 'all') return true;
+        if (stockFilter === 'inStock') return item.available > item.low_stock_threshold;
+        if (stockFilter === 'lowStock') return item.available <= item.low_stock_threshold && item.available > 0;
+        if (stockFilter === 'outOfStock') return item.available === 0;
+        return true;
+      })();
 
-      return matchesSearch && matchesCategory;
+      const matchesLocation = locationFilter === 'all' || item.location === locationFilter;
+      const matchesSupplier = supplierFilter === 'all' || item.supplier_id.toString() === supplierFilter;
+
+      // Return true only if all filters match
+      return matchesSearch && matchesCategory && matchesStockStatus &&
+        matchesLocation && matchesSupplier;
     });
-  }, [inventory, searchQuery, filterCategory]);
+  }, [inventory, searchQuery, filterCategory, stockFilter, locationFilter, supplierFilter]);
+
 
   // Get current items for pagination
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -549,9 +569,9 @@ const handleSelectAll = () => {
 
             <Button
               variant="outlined"
-              colorvariant="outlined"
               color="neutral"
               startDecorator={<FilterListIcon />}
+              onClick={() => setOpenFilterModal(true)}
             >
               Filter
             </Button>
@@ -566,7 +586,8 @@ const handleSelectAll = () => {
           </Grid>
         </Grid>
       </Card>
-      {/* Add this before your table */}
+
+      {/* Item selection checkbox */}
       {selectedItems.length > 0 && (
         <Box sx={{ mb: 2, display: 'flex', gap: 1 }}>
           <Typography sx={{ display: 'flex', alignItems: 'center' }}>
@@ -586,7 +607,7 @@ const handleSelectAll = () => {
             variant="soft"
             startDecorator={<DeleteIcon />}
             onClick={() => {
-              // Add confirm dialog or logic for bulk delete
+              // Confirm dialog and logic for bulk delete
               console.log("Bulk delete:", selectedItems);
             }}
           >
@@ -698,6 +719,73 @@ const handleSelectAll = () => {
           </Table>
         </Card>
       )}
+
+      <Modal open={openFilterModal} onClose={() => setOpenFilterModal(false)}>
+        <ModalDialog size="md">
+          <ModalClose />
+          <Typography level="h4">Filter Inventory</Typography>
+          <Divider sx={{ my: 2 }} />
+
+          <Grid container spacing={2}>
+            <Grid xs={12} md={6}>
+              <FormControl>
+                <FormLabel>Stock Status</FormLabel>
+                <Select value={stockFilter} onChange={(e, val) => setStockFilter(val || 'all')}>
+                  <Option value="all">All Items</Option>
+                  <Option value="inStock">In Stock</Option>
+                  <Option value="lowStock">Low Stock</Option>
+                  <Option value="outOfStock">Out of Stock</Option>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid xs={12} md={6}>
+              <FormControl>
+                <FormLabel>Location</FormLabel>
+                <Select value={locationFilter} onChange={(e, val) => setLocationFilter(val || 'all')}>
+                  <Option value="all">All Locations</Option>
+                  {/* Get unique locations */}
+                  {Array.from(new Set(inventory.map(item => item.location).filter(Boolean)))
+                    .map(loc => (
+                      <Option key={loc} value={loc}>{loc}</Option>
+                    ))
+                  }
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid xs={12} md={6}>
+              <FormControl>
+                <FormLabel>Supplier</FormLabel>
+                <Select value={supplierFilter} onChange={(e, val) => setSupplierFilter(val || 'all')}>
+                  <Option value="all">All Suppliers</Option>
+                  {suppliers.map(supplier => (
+                    <Option key={supplier.id} value={supplier.id.toString()}>{supplier.name}</Option>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid xs={12}>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 2 }}>
+                <Button
+                  variant="outlined"
+                  color="neutral"
+                  onClick={() => {
+                    setStockFilter('all');
+                    setLocationFilter('all');
+                    setSupplierFilter('all');
+                    setDateFilter('all');
+                  }}
+                >
+                  Reset Filters
+                </Button>
+                <Button onClick={() => setOpenFilterModal(false)}>Apply Filters</Button>
+              </Box>
+            </Grid>
+          </Grid>
+        </ModalDialog>
+      </Modal>
 
       {/* Low Stock Tab */}
       {activeTab === 1 && (
